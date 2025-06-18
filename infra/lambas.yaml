@@ -1,0 +1,95 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Despliegue de la función Lambda Hello World
+
+Parameters:
+  LambdaCodeS3Bucket:
+    Type: String
+    Description: Nombre del bucket S3 donde está el código de la Lambda
+  LambdaCodeS3Key:
+    Type: String
+    Description: Ruta (key) en S3 del archivo ZIP de la Lambda
+  LambdaLayerS3Bucket:
+    Type: String
+    Description: Nombre del bucket S3 donde está el ZIP de la layer
+  LambdaLayerS3Key:
+    Type: String
+    Description: Ruta (key) en S3 del archivo ZIP de la layer
+  LambdaDeployHash:
+    Type: String
+    Description: Hash del ZIP para forzar actualización
+  LambdaDeployDate:
+    Type: String
+    Description: Fecha de despliegue para forzar actualización
+
+Resources:
+  HelloWorldLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Path: "/"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  HelloWorldLambdaLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      LayerName: HelloWorldDependencies
+      Content:
+        S3Bucket: !Ref LambdaLayerS3Bucket
+        S3Key: !Ref LambdaLayerS3Key
+      CompatibleRuntimes:
+        - nodejs18.x
+      Description: Dependencias para HelloWorld Lambda
+
+  HelloWorldLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: HelloWorldLambda
+      Handler: index.handler
+      Role: !GetAtt HelloWorldLambdaRole.Arn
+      Runtime: nodejs18.x
+      Code:
+        S3Bucket: !Ref LambdaCodeS3Bucket
+        S3Key: !Ref LambdaCodeS3Key
+      Timeout: 10
+      MemorySize: 128
+      Layers:
+        - !Ref HelloWorldLambdaLayer
+      Environment:
+        Variables:
+          DEPLOY_HASH: !Ref LambdaDeployHash
+      Tags:
+        - Key: DeployHash
+          Value: !Ref LambdaDeployHash
+        - Key: DeployDate
+          Value: !Ref LambdaDeployDate
+
+  HelloWorldLambdaVersion:
+    Type: AWS::Lambda::Version
+    Properties:
+      FunctionName: !Ref HelloWorldLambdaFunction
+      Description: !Ref LambdaDeployDate
+
+  HelloWorldLambdaAlias:
+    Type: AWS::Lambda::Alias
+    Properties:
+      FunctionName: !Ref HelloWorldLambdaFunction
+      Name: live
+      FunctionVersion: !GetAtt HelloWorldLambdaVersion.Version
+
+Outputs:
+  LambdaFunctionName:
+    Description: Nombre de la función Lambda
+    Value: !Ref HelloWorldLambdaFunction
+  LambdaLayerArn:
+    Description: ARN de la Lambda Layer creada
+    Value: !Ref HelloWorldLambdaLayer
+  LambdaFunctionLiveAliasArn:
+    Description: ARN del alias 'live' de la función Lambda
+    Value: !Ref HelloWorldLambdaAlias
