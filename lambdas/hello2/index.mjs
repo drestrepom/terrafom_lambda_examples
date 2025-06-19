@@ -41,7 +41,7 @@ export const handler = async (event) => {
 
         return {
             statusCode: 200,
-            body: JSON.stringify(`Successfully used secret! ${dbPassword}`),
+            body: JSON.stringify(`Successfully used secret! ${dbPassword} from hello2`),
         };
     } catch (error) {
         return {

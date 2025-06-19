@@ -5,7 +5,8 @@ resource "aws_iam_role_policy_attachment" "secrets_manager_access" {
 
 resource "aws_secretsmanager_secret" "secrets" {
   for_each = local.environments
-  name     = "lambda-secrets-${each.key}"
+  name     = "lambda-secrets3-${each.key}"
+  recovery_window_in_days = 7
 }
 
 resource "aws_secretsmanager_secret_version" "secret_versions" {
